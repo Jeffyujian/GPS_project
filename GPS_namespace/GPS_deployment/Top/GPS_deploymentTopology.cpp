@@ -69,8 +69,8 @@ void configureTopology() {
     memset(&gpsBuffMgrBins, 0, sizeof(gpsBuffMgrBins));
 
     // define buffer size and numbers per bin. One bin is enough    for our scope.
-    gpsBuffMgrBins.bins[0].bufferSize = 32*1024; // arbitrary
-    gpsBuffMgrBins.bins[0].numBuffers = 10; // arbitrary
+    gpsBuffMgrBins.bins[0].bufferSize = 1024; // arbitrary
+    gpsBuffMgrBins.bins[0].numBuffers = 16; // arbitrary
     gpsBufferManager.setup(300, 0, mallocator, gpsBuffMgrBins);
 
     gpsUartOpened = gpsUart.open(

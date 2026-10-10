@@ -7,7 +7,7 @@ module GPS_namespace {
         @ TODO
 
         @ Receive a buffer of bytes from the UART driver
-        async input port UartRead: Drv.ByteStreamData
+        async input port UartRead: Drv.ByteStreamData block
 
         @ Return the buffer after processing its contents
         output port deallocate: Fw.BufferSend

@@ -146,6 +146,9 @@ GPS ::~GPS() {}
 void GPS::UartRead_handler(FwIndexType portNum, Fw::Buffer& buffer, const Drv::ByteStreamStatus& status) {
     (void)portNum;
 
+    std::fprintf(stderr, "[GPS DEBUG] begin size=%zu\n",
+                 static_cast<std::size_t>(buffer.getSize()));
+
     if (status == Drv::ByteStreamStatus::OP_OK) {
         const U8* data = buffer.getData();
 
@@ -155,14 +158,16 @@ void GPS::UartRead_handler(FwIndexType portNum, Fw::Buffer& buffer, const Drv::B
             }
         }
     } else {
-        std::fprintf(stderr, "[GPS] UART receive error\n");
         m_nmeaLine.clear();
     }
 
-    // Return allocated buffers, including those received with an error status.
+    std::fprintf(stderr, "[GPS DEBUG] processing finished\n");
+
     if (buffer.getData() != nullptr) {
         this->deallocate_out(0, buffer);
     }
+
+    std::fprintf(stderr, "[GPS DEBUG] buffer returned\n");
 }
 
 // Assemble complete sentences across arbitrary UART buffer boundaries.
