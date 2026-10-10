@@ -159,7 +159,10 @@ void GPS::UartRead_handler(FwIndexType portNum, Fw::Buffer& buffer, const Drv::B
         m_nmeaLine.clear();
     }
 
-    this->deallocate_out(0, buffer);
+    // Return allocated buffers, including those received with an error status.
+    if (buffer.getData() != nullptr) {
+        this->deallocate_out(0, buffer);
+    }
 }
 
 // Assemble complete sentences across arbitrary UART buffer boundaries.

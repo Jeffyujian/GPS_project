@@ -19,6 +19,10 @@ namespace GPS_namespace {
 // Instantiate a malloc allocator for cmdSeq buffer allocation
 Fw::MallocAllocator mallocator;
 
+namespace {
+    bool gpsUartOpened = false;
+}
+
 // Rate group timing: base clock interval and divisors are coupled to rate group names
 const Fw::TimeInterval rateGroupInterval(1, 0);  // 1Hz base clock
 Svc::RateGroupDriver::DividerSet rateGroupDivisorsSet{{{1, 0}, {2, 0}, {4, 0}}};
@@ -69,16 +73,16 @@ void configureTopology() {
     gpsBuffMgrBins.bins[0].numBuffers = 10; // arbitrary
     gpsBufferManager.setup(300, 0, mallocator, gpsBuffMgrBins);
 
-    bool uart_success = gpsUart.open(
-            "<addr>",
-            Drv::LinuxUartDriver::BAUD_9600,
-            Drv::LinuxUartDriver::NO_FLOW,
-            Drv::LinuxUartDriver::PARITY_NONE,
-            1024);
+    gpsUartOpened = gpsUart.open(
+        "/dev/serial0",
+        Drv::LinuxUartDriver::BAUD_38400,
+        Drv::LinuxUartDriver::NO_FLOW,
+        Drv::LinuxUartDriver::PARITY_NONE,
+        1024
+    );
 
-    if (uart_success) {
+    if (gpsUartOpened) {
         std::printf("[INFO] UART opened successfully\n");
-        gpsUart.start();
     } else {
         std::fprintf(stderr, "[ERROR] UART failed to open\n");
     }
@@ -107,6 +111,10 @@ void setupTopology(const TopologyState& state) {
     loadParameters();
     // Autocoded task kick-off (active components). Function provided by autocoder.
     startTasks(state);
+    // Start reception only after the GPS processing task is running.
+    if (gpsUartOpened) {
+        gpsUart.start();
+    }
     // Initialize socket communication if and only if there is a valid specification
     if (state.hostname != nullptr && state.port != 0) {
         Os::TaskString name("ReceiveTask");
@@ -125,22 +133,24 @@ void stopRateGroups() {
 }
 
 void teardownTopology(const TopologyState& state) {
-    // Autocoded (active component) task clean-up. Functions provided by topology autocoder.
-    stopTasks(state);
-    freeThreads(state);
+    // Stop producers while active components can still process their messages.
+    if (gpsUartOpened) {
+        gpsUart.quitReadThread();
+        (void)gpsUart.join();
+    }
 
-    // Other task clean-up.
     comDriver.stop();
     (void)comDriver.join();
 
-    // Resource deallocation
+    // Stop and join active component tasks.
+    stopTasks(state);
+    freeThreads(state);
+
+    // Release resources after their users have stopped.
     cmdSeq.deallocateBuffer(mallocator);
+    gpsBufferManager.cleanup();
 
     tearDownComponents(state);
     deinitComponents(state);
-
-    gpsUart.quitReadThread();
-    gpsBufferManager.cleanup();
-
 }
 };  // namespace GPS_namespace
